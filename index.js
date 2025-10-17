@@ -1,11 +1,9 @@
 import "dotenv/config";
 import "./scrape-betclic.js";
-// import "./scrapping-cb-rugby.js"; // Fichier non disponible
 
-console.log("🚀 Unibet Scraper complet démarré !");
+console.log("🚀 Betclic Scraper démarré !");
 console.log("⏰ Surveillance 24h/24 toutes les 30 minutes");
-console.log("📊 Unibet Matchs → Canal 247");
-console.log("🔥 Unibet Cotes Boostées → Canal 14");
+console.log("📊 Betclic Matchs → Canal 246");
 
 // Garder le processus en vie pour Railway
 let isShuttingDown = false;
@@ -33,6 +31,6 @@ process.on('SIGINT', () => {
 // Garder le processus en vie
 setInterval(() => {
     if (!isShuttingDown) {
-        console.log('💓 Heartbeat - Unibet Scraper actif');
+        console.log('💓 Heartbeat - Betclic Scraper actif');
     }
 }, 300000); // Toutes les 5 minutes

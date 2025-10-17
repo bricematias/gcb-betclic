@@ -38,10 +38,10 @@ function saveState(state) {
 }
 
 async function launchBrowser() {
-    // Configuration pour Railway (Docker avec Puppeteer image)
+    // Configuration pour Railway (Alpine Linux avec Chromium)
     return puppeteer.launch({
         headless: "new",
-        executablePath: '/usr/bin/google-chrome-stable',
+        executablePath: '/usr/bin/chromium-browser',
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
@@ -51,6 +51,8 @@ async function launchBrowser() {
             "--no-zygote",
             "--single-process",
             "--disable-gpu",
+            "--disable-web-security",
+            "--disable-features=VizDisplayCompositor"
         ],
     });
 }
