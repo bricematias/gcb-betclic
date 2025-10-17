@@ -135,12 +135,18 @@ async function scrapeMatches(page) {
     // Essayer rapidement les sélecteurs sans attendre trop longtemps
     console.log("🔍 Recherche rapide des sélecteurs...");
     let cardsFound = false;
-    const selectors = ['sports-events-event-card', '.groupEvents_card', '.cardEvent'];
+    const selectors = [
+        'sports-events-event-card.groupEvents_card',  // Sélecteur combiné
+        'sports-events-event-card',                   // Élément seul
+        '.groupEvents_card',                          // Classe seule
+        '.cardEvent',                                 // Classe cardEvent
+        '[data-qa="contestant-1-label"]'              // Fallback par data-qa
+    ];
     
     for (const selector of selectors) {
         try {
             console.log(`🔍 Test rapide du sélecteur: ${selector}`);
-            await page.waitForSelector(selector, { timeout: 5000 }); // Timeout réduit
+            await page.waitForSelector(selector, { timeout: 3000 }); // Timeout encore plus réduit
             console.log(`✅ Sélecteur trouvé: ${selector}`);
             cardsFound = true;
             break;
@@ -166,9 +172,14 @@ async function scrapeMatches(page) {
             const hasContent = body && body.innerHTML.length > 1000;
             console.log(`📄 Page chargée: ${hasContent ? 'Oui' : 'Non'} (${body ? body.innerHTML.length : 0} caractères)`);
             
-            // Essayer plusieurs sélecteurs possibles
-            let cards = Array.from(document.querySelectorAll('sports-events-event-card'));
-            console.log(`📊 Cards trouvées avec 'sports-events-event-card': ${cards.length}`);
+            // Essayer plusieurs sélecteurs possibles dans l'ordre de priorité
+            let cards = Array.from(document.querySelectorAll('sports-events-event-card.groupEvents_card'));
+            console.log(`📊 Cards trouvées avec 'sports-events-event-card.groupEvents_card': ${cards.length}`);
+            
+            if (cards.length === 0) {
+                cards = Array.from(document.querySelectorAll('sports-events-event-card'));
+                console.log(`📊 Cards trouvées avec 'sports-events-event-card': ${cards.length}`);
+            }
             
             if (cards.length === 0) {
                 cards = Array.from(document.querySelectorAll('.groupEvents_card'));
@@ -184,6 +195,15 @@ async function scrapeMatches(page) {
             if (cards.length === 0) {
                 cards = Array.from(document.querySelectorAll('[data-qa="contestant-1-label"]'));
                 console.log(`📊 Cards trouvées avec '[data-qa="contestant-1-label"]': ${cards.length}`);
+            }
+            
+            // Dernier recours : chercher par conteneur parent
+            if (cards.length === 0) {
+                const parentContainer = document.querySelector('.groupEvents_content');
+                if (parentContainer) {
+                    cards = Array.from(parentContainer.querySelectorAll('sports-events-event-card'));
+                    console.log(`📊 Cards trouvées dans .groupEvents_content: ${cards.length}`);
+                }
             }
             
             console.log(`🎯 Total cards trouvées: ${cards.length}`);
