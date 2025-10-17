@@ -1,6 +1,6 @@
 import "dotenv/config";
-import "./scrape-unibet.js";
-import "./scrapping-cb-rugby.js";
+import "./scrape-betclic.js";
+// import "./scrapping-cb-rugby.js"; // Fichier non disponible
 
 console.log("🚀 Unibet Scraper complet démarré !");
 console.log("⏰ Surveillance 24h/24 toutes les 30 minutes");
