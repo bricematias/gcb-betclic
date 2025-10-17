@@ -128,18 +128,19 @@ async function scrapeMatches(page) {
         throw lastError;
     }
 
-    // Attendre plus longtemps sur Railway (environnement plus lent)
-    console.log("⏳ Attente de 15 secondes pour le chargement complet...");
-    await new Promise(resolve => setTimeout(resolve, 15000)); // Attendre 15 secondes supplémentaires
+    // Attendre moins longtemps sur Railway pour éviter les timeouts
+    console.log("⏳ Attente de 5 secondes pour le chargement complet...");
+    await new Promise(resolve => setTimeout(resolve, 5000)); // Attendre 5 secondes seulement
 
-    // Essayer plusieurs sélecteurs avec plus de patience
+    // Essayer rapidement les sélecteurs sans attendre trop longtemps
+    console.log("🔍 Recherche rapide des sélecteurs...");
     let cardsFound = false;
     const selectors = ['sports-events-event-card', '.groupEvents_card', '.cardEvent'];
     
     for (const selector of selectors) {
         try {
-            console.log(`🔍 Recherche du sélecteur: ${selector}`);
-            await page.waitForSelector(selector, { timeout: 30000 });
+            console.log(`🔍 Test rapide du sélecteur: ${selector}`);
+            await page.waitForSelector(selector, { timeout: 5000 }); // Timeout réduit
             console.log(`✅ Sélecteur trouvé: ${selector}`);
             cardsFound = true;
             break;
@@ -153,111 +154,118 @@ async function scrapeMatches(page) {
         console.log("⚠️ Aucun sélecteur trouvé, mais on continue quand même...");
     }
 
-    const matches = await page.evaluate(() => {
-        console.log("🔍 Recherche des matchs Betclic...");
-        console.log(`📄 URL actuelle: ${window.location.href}`);
-        console.log(`📄 Titre de la page: ${document.title}`);
-        
-        // Vérifier si la page est complètement chargée
-        const body = document.body;
-        const hasContent = body && body.innerHTML.length > 1000;
-        console.log(`📄 Page chargée: ${hasContent ? 'Oui' : 'Non'} (${body ? body.innerHTML.length : 0} caractères)`);
-        
-        // Essayer plusieurs sélecteurs possibles
-        let cards = Array.from(document.querySelectorAll('sports-events-event-card'));
-        console.log(`📊 Cards trouvées avec 'sports-events-event-card': ${cards.length}`);
-        
-        if (cards.length === 0) {
-            cards = Array.from(document.querySelectorAll('.groupEvents_card'));
-            console.log(`📊 Cards trouvées avec '.groupEvents_card': ${cards.length}`);
-        }
-        
-        if (cards.length === 0) {
-            cards = Array.from(document.querySelectorAll('.cardEvent'));
-            console.log(`📊 Cards trouvées avec '.cardEvent': ${cards.length}`);
-        }
-        
-        // Essayer d'autres sélecteurs possibles
-        if (cards.length === 0) {
-            cards = Array.from(document.querySelectorAll('[data-qa="contestant-1-label"]'));
-            console.log(`📊 Cards trouvées avec '[data-qa="contestant-1-label"]': ${cards.length}`);
-        }
-        
-        console.log(`🎯 Total cards trouvées: ${cards.length}`);
-        
-        return cards.map((card, index) => {
-            console.log(`🔍 Traitement card ${index + 1}`);
+    let matches = [];
+    try {
+        matches = await page.evaluate(() => {
+            console.log("🔍 Recherche des matchs Betclic...");
+            console.log(`📄 URL actuelle: ${window.location.href}`);
+            console.log(`📄 Titre de la page: ${document.title}`);
             
-            // Récupérer les équipes
-            const contestant1 = card.querySelector('[data-qa="contestant-1-label"]')?.textContent?.trim();
-            const contestant2 = card.querySelector('[data-qa="contestant-2-label"]')?.textContent?.trim();
+            // Vérifier si la page est complètement chargée
+            const body = document.body;
+            const hasContent = body && body.innerHTML.length > 1000;
+            console.log(`📄 Page chargée: ${hasContent ? 'Oui' : 'Non'} (${body ? body.innerHTML.length : 0} caractères)`);
             
-            console.log(`👥 Équipes: ${contestant1} vs ${contestant2}`);
+            // Essayer plusieurs sélecteurs possibles
+            let cards = Array.from(document.querySelectorAll('sports-events-event-card'));
+            console.log(`📊 Cards trouvées avec 'sports-events-event-card': ${cards.length}`);
             
-            // Vérifier si on a de vrais noms d'équipes (pas des noms génériques)
-            const hasRealTeams = contestant1 && contestant2 && 
-                !contestant1.toLowerCase().includes('match') && 
-                !contestant2.toLowerCase().includes('match') &&
-                !contestant1.match(/^match\s*\d+$/i) && 
-                !contestant2.match(/^match\s*\d+$/i);
+            if (cards.length === 0) {
+                cards = Array.from(document.querySelectorAll('.groupEvents_card'));
+                console.log(`📊 Cards trouvées avec '.groupEvents_card': ${cards.length}`);
+            }
             
-            const matchName = hasRealTeams ? `${contestant1} - ${contestant2}` : `Match inconnu`;
+            if (cards.length === 0) {
+                cards = Array.from(document.querySelectorAll('.cardEvent'));
+                console.log(`📊 Cards trouvées avec '.cardEvent': ${cards.length}`);
+            }
             
-            // Récupérer l'heure
-            const timeEl = card.querySelector('.scoreboard_hour');
-            const time = timeEl ? timeEl.textContent.trim() : 'Heure inconnue';
+            // Essayer d'autres sélecteurs possibles
+            if (cards.length === 0) {
+                cards = Array.from(document.querySelectorAll('[data-qa="contestant-1-label"]'));
+                console.log(`📊 Cards trouvées avec '[data-qa="contestant-1-label"]': ${cards.length}`);
+            }
             
-            // Récupérer la compétition depuis le breadcrumb
-            const breadcrumbItems = card.querySelectorAll('.breadcrumb_itemLabel');
-            let competition = 'Compétition inconnue';
-            for (const item of breadcrumbItems) {
-                const text = item.textContent.trim();
-                if (text && text !== '' && text !== '•') {
-                    // Prendre le texte qui contient "•" (ex: "United Rugby Championship • J2")
-                    if (text.includes('•')) {
-                        competition = text;
-                        break;
-                    }
-                    // Sinon prendre le premier texte non vide qui n'est pas juste "•"
-                    if (competition === 'Compétition inconnue' && text !== '•') {
-                        competition = text;
+            console.log(`🎯 Total cards trouvées: ${cards.length}`);
+        
+            return cards.map((card, index) => {
+                console.log(`🔍 Traitement card ${index + 1}`);
+                
+                // Récupérer les équipes
+                const contestant1 = card.querySelector('[data-qa="contestant-1-label"]')?.textContent?.trim();
+                const contestant2 = card.querySelector('[data-qa="contestant-2-label"]')?.textContent?.trim();
+                
+                console.log(`👥 Équipes: ${contestant1} vs ${contestant2}`);
+                
+                // Vérifier si on a de vrais noms d'équipes (pas des noms génériques)
+                const hasRealTeams = contestant1 && contestant2 && 
+                    !contestant1.toLowerCase().includes('match') && 
+                    !contestant2.toLowerCase().includes('match') &&
+                    !contestant1.match(/^match\s*\d+$/i) && 
+                    !contestant2.match(/^match\s*\d+$/i);
+                
+                const matchName = hasRealTeams ? `${contestant1} - ${contestant2}` : `Match inconnu`;
+                
+                // Récupérer l'heure
+                const timeEl = card.querySelector('.scoreboard_hour');
+                const time = timeEl ? timeEl.textContent.trim() : 'Heure inconnue';
+                
+                // Récupérer la compétition depuis le breadcrumb
+                const breadcrumbItems = card.querySelectorAll('.breadcrumb_itemLabel');
+                let competition = 'Compétition inconnue';
+                for (const item of breadcrumbItems) {
+                    const text = item.textContent.trim();
+                    if (text && text !== '' && text !== '•') {
+                        // Prendre le texte qui contient "•" (ex: "United Rugby Championship • J2")
+                        if (text.includes('•')) {
+                            competition = text;
+                            break;
+                        }
+                        // Sinon prendre le premier texte non vide qui n'est pas juste "•"
+                        if (competition === 'Compétition inconnue' && text !== '•') {
+                            competition = text;
+                        }
                     }
                 }
-            }
-            
-            // Récupérer le nombre de paris
-            const betCountEl = card.querySelector('.event_betsNum');
-            let betCount = 0;
-            if (betCountEl) {
-                const match = betCountEl.textContent.match(/(\d+)/);
-                if (match) betCount = parseInt(match[1], 10);
-            }
-            
-            console.log(`📊 Match: ${matchName} | Compétition: ${competition} | Heure: ${time} | Paris: ${betCount}`);
-            
-            return {
-                matchName,
-                competition,
-                time,
-                betCount,
-                index
-            };
-        }).filter(match => 
-            match.matchName !== 'Match inconnu' && 
-            match.time !== 'Heure inconnue' &&
-            // Filtrer les noms génériques (Match 1, Match 2, etc.)
-            !match.matchName.match(/^match\s*\d+$/i) &&
-            !match.matchName.toLowerCase().includes('match inconnu') &&
-            // Filtrer les vainqueurs de championnats
-            !match.matchName.toLowerCase().includes('vainqueur') &&
-            !match.competition.toLowerCase().includes('vainqueur') &&
-            !match.matchName.toLowerCase().includes('winner') &&
-            !match.competition.toLowerCase().includes('winner') &&
-            // Filtrer les compétitions futures
-            !match.competition.includes('2025') &&
-            !match.competition.includes('2026')
-        ); // Filter out incomplete matches, generic names, future competitions and championship winners
-    });
+                
+                // Récupérer le nombre de paris
+                const betCountEl = card.querySelector('.event_betsNum');
+                let betCount = 0;
+                if (betCountEl) {
+                    const match = betCountEl.textContent.match(/(\d+)/);
+                    if (match) betCount = parseInt(match[1], 10);
+                }
+                
+                console.log(`📊 Match: ${matchName} | Compétition: ${competition} | Heure: ${time} | Paris: ${betCount}`);
+                
+                return {
+                    matchName,
+                    competition,
+                    time,
+                    betCount,
+                    index
+                };
+            }).filter(match => 
+                match.matchName !== 'Match inconnu' && 
+                match.time !== 'Heure inconnue' &&
+                // Filtrer les noms génériques (Match 1, Match 2, etc.)
+                !match.matchName.match(/^match\s*\d+$/i) &&
+                !match.matchName.toLowerCase().includes('match inconnu') &&
+                // Filtrer les vainqueurs de championnats
+                !match.matchName.toLowerCase().includes('vainqueur') &&
+                !match.competition.toLowerCase().includes('vainqueur') &&
+                !match.matchName.toLowerCase().includes('winner') &&
+                !match.competition.toLowerCase().includes('winner') &&
+                // Filtrer les compétitions futures
+                !match.competition.includes('2025') &&
+                !match.competition.includes('2026')
+            ); // Filter out incomplete matches, generic names, future competitions and championship winners
+        });
+    } catch (error) {
+        console.error("❌ Erreur lors de l'évaluation de la page:", error.message);
+        console.log("⚠️ Retour d'un tableau vide en cas d'erreur");
+        matches = [];
+    }
 
     console.log(`🎯 ${matches.length} matchs trouvés`);
     return matches;
