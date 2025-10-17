@@ -52,21 +52,44 @@ async function launchBrowser() {
             "--single-process",
             "--disable-gpu",
             "--disable-web-security",
-            "--disable-features=VizDisplayCompositor"
+            "--disable-features=VizDisplayCompositor",
+            "--disable-background-timer-throttling",
+            "--disable-backgrounding-occluded-windows",
+            "--disable-renderer-backgrounding",
+            "--disable-extensions",
+            "--disable-plugins",
+            "--disable-default-apps",
+            "--disable-sync",
+            "--disable-translate",
+            "--hide-scrollbars",
+            "--mute-audio",
+            "--no-default-browser-check",
+            "--no-pings",
+            "--password-store=basic",
+            "--use-mock-keychain"
         ],
+        timeout: 60000,
+        protocolTimeout: 60000
     });
 }
 
 async function scrapeMatches(page) {
-    // Navigation vers Betclic (timeout augmenté pour Railway)
-    await page.goto(TARGET_URL, { waitUntil: "networkidle2", timeout: 120000 });
-
     try {
-        await page.waitForSelector('[aria-label="Fermer"]', { timeout: 4000 });
-        await page.click('[aria-label="Fermer"]');
-        // Popup fermée
-    } catch {
-        // Pas de popup à fermer
+        // Navigation vers Betclic (timeout augmenté pour Railway)
+        console.log(`🌐 Navigation vers: ${TARGET_URL}`);
+        await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 120000 });
+        console.log("✅ Page chargée avec succès");
+
+        try {
+            await page.waitForSelector('[aria-label="Fermer"]', { timeout: 4000 });
+            await page.click('[aria-label="Fermer"]');
+            console.log("✅ Popup fermée");
+        } catch {
+            console.log("ℹ️ Pas de popup à fermer");
+        }
+    } catch (error) {
+        console.error("❌ Erreur de navigation:", error.message);
+        throw error;
     }
 
     // Attendre plus longtemps sur Railway (environnement plus lent)
@@ -192,11 +215,26 @@ async function mainRun() {
     try {
         console.log("🚀 Lancement navigateur Betclic...");
         browser = await launchBrowser();
+        
+        // Vérifier que le navigateur est bien lancé
+        if (!browser || browser.isConnected() === false) {
+            throw new Error("Navigateur non connecté");
+        }
+        
         const page = await browser.newPage();
         
         // Configuration pour Railway (plus de patience)
         await page.setDefaultTimeout(120000);
         await page.setDefaultNavigationTimeout(120000);
+        
+        // Gestion des erreurs de page
+        page.on('error', (err) => {
+            console.error("❌ Erreur de page:", err.message);
+        });
+        
+        page.on('pageerror', (err) => {
+            console.error("❌ Erreur JavaScript:", err.message);
+        });
         
         const state = loadState();
         if (!state.matches) state.matches = {};
@@ -253,9 +291,20 @@ async function mainRun() {
     console.log("=== Betclic Run end ===\n");
     } catch (error) {
         console.error("❌ Erreur dans mainRun:", error.message);
+        console.error("❌ Stack trace:", error.stack);
+        
         if (browser) {
-            await browser.close();
+            try {
+                await browser.close();
+                console.log("✅ Navigateur fermé proprement");
+            } catch (closeError) {
+                console.error("❌ Erreur lors de la fermeture du navigateur:", closeError.message);
+            }
         }
+        
+        // Attendre un peu avant de relancer
+        console.log("⏳ Attente de 30 secondes avant de continuer...");
+        await new Promise(resolve => setTimeout(resolve, 30000));
     }
 }
 
