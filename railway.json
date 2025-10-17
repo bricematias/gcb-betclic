@@ -1,0 +1,11 @@
+{
+  "deploy": {
+    "volumes": [
+      {
+        "name": "data",
+        "mountPath": "/app/data"
+      }
+    ]
+  }
+}
+
