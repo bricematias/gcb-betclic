@@ -84,45 +84,84 @@ async function launchBrowser() {
 }
 
 async function scrapeMatches(page) {
-    try {
-        // Navigation vers Betclic (timeout augmenté pour Railway)
-        console.log(`🌐 Navigation vers: ${TARGET_URL}`);
-        await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 120000 });
-        console.log("✅ Page chargée avec succès");
-
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            await page.waitForSelector('[aria-label="Fermer"]', { timeout: 4000 });
-            await page.click('[aria-label="Fermer"]');
-            console.log("✅ Popup fermée");
-        } catch {
-            console.log("ℹ️ Pas de popup à fermer");
+            console.log(`🌐 Navigation vers: ${TARGET_URL} (tentative ${attempt}/${maxRetries})`);
+            
+            // Navigation avec différentes stratégies
+            if (attempt === 1) {
+                await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 120000 });
+            } else if (attempt === 2) {
+                await page.goto(TARGET_URL, { waitUntil: "networkidle0", timeout: 120000 });
+            } else {
+                await page.goto(TARGET_URL, { waitUntil: "load", timeout: 120000 });
+            }
+            
+            console.log("✅ Page chargée avec succès");
+
+            try {
+                await page.waitForSelector('[aria-label="Fermer"]', { timeout: 4000 });
+                await page.click('[aria-label="Fermer"]');
+                console.log("✅ Popup fermée");
+            } catch {
+                console.log("ℹ️ Pas de popup à fermer");
+            }
+            
+            // Si on arrive ici, la navigation a réussi
+            break;
+            
+        } catch (error) {
+            console.error(`❌ Erreur de navigation tentative ${attempt}:`, error.message);
+            lastError = error;
+            
+            if (attempt < maxRetries) {
+                console.log(`⏳ Attente de 5 secondes avant la prochaine tentative...`);
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
         }
-    } catch (error) {
-        console.error("❌ Erreur de navigation:", error.message);
-        throw error;
+    }
+    
+    if (lastError && lastError.message.includes('Navigation')) {
+        throw lastError;
     }
 
     // Attendre plus longtemps sur Railway (environnement plus lent)
-    await new Promise(resolve => setTimeout(resolve, 10000)); // Attendre 10 secondes supplémentaires
+    console.log("⏳ Attente de 15 secondes pour le chargement complet...");
+    await new Promise(resolve => setTimeout(resolve, 15000)); // Attendre 15 secondes supplémentaires
 
     // Essayer plusieurs sélecteurs avec plus de patience
     let cardsFound = false;
-    const selectors = ['.groupEvents_card', 'sports-events-event-card', '.cardEvent'];
+    const selectors = ['sports-events-event-card', '.groupEvents_card', '.cardEvent'];
     
     for (const selector of selectors) {
         try {
+            console.log(`🔍 Recherche du sélecteur: ${selector}`);
             await page.waitForSelector(selector, { timeout: 30000 });
+            console.log(`✅ Sélecteur trouvé: ${selector}`);
             cardsFound = true;
             break;
         } catch (e) {
+            console.log(`❌ Sélecteur non trouvé: ${selector}`);
             // Continue avec le sélecteur suivant
         }
     }
     
-    // Continue même si aucun sélecteur n'est trouvé
+    if (!cardsFound) {
+        console.log("⚠️ Aucun sélecteur trouvé, mais on continue quand même...");
+    }
 
     const matches = await page.evaluate(() => {
         console.log("🔍 Recherche des matchs Betclic...");
+        console.log(`📄 URL actuelle: ${window.location.href}`);
+        console.log(`📄 Titre de la page: ${document.title}`);
+        
+        // Vérifier si la page est complètement chargée
+        const body = document.body;
+        const hasContent = body && body.innerHTML.length > 1000;
+        console.log(`📄 Page chargée: ${hasContent ? 'Oui' : 'Non'} (${body ? body.innerHTML.length : 0} caractères)`);
         
         // Essayer plusieurs sélecteurs possibles
         let cards = Array.from(document.querySelectorAll('sports-events-event-card'));
@@ -136,6 +175,12 @@ async function scrapeMatches(page) {
         if (cards.length === 0) {
             cards = Array.from(document.querySelectorAll('.cardEvent'));
             console.log(`📊 Cards trouvées avec '.cardEvent': ${cards.length}`);
+        }
+        
+        // Essayer d'autres sélecteurs possibles
+        if (cards.length === 0) {
+            cards = Array.from(document.querySelectorAll('[data-qa="contestant-1-label"]'));
+            console.log(`📊 Cards trouvées avec '[data-qa="contestant-1-label"]': ${cards.length}`);
         }
         
         console.log(`🎯 Total cards trouvées: ${cards.length}`);
