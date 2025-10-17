@@ -1,15 +1,5 @@
-# Utiliser une image Node plus légère avec Chrome
-FROM node:18-alpine
-
-# Installer Chrome et les dépendances système
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont
+# Utiliser l'image officielle Puppeteer
+FROM ghcr.io/puppeteer/puppeteer:21.0.0
 
 # Définir le répertoire de travail
 WORKDIR /app
@@ -17,9 +7,8 @@ WORKDIR /app
 # Copier les fichiers de dépendances
 COPY package*.json ./
 
-# Installer les dépendances
+# Installer les dépendances (Chrome déjà installé dans l'image)
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 RUN npm ci --omit=dev
 
 # Copier le reste des fichiers

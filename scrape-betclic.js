@@ -38,38 +38,17 @@ function saveState(state) {
 }
 
 async function launchBrowser() {
-    // Configuration pour Railway (Alpine Linux avec Chromium)
+    // Configuration pour l'image Puppeteer officielle
     return puppeteer.launch({
         headless: "new",
-        executablePath: '/usr/bin/chromium-browser',
+        executablePath: '/usr/bin/google-chrome-stable',
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
             "--disable-dev-shm-usage",
-            "--disable-accelerated-2d-canvas",
-            "--no-first-run",
-            "--no-zygote",
-            "--single-process",
             "--disable-gpu",
-            "--disable-web-security",
-            "--disable-features=VizDisplayCompositor",
-            "--disable-background-timer-throttling",
-            "--disable-backgrounding-occluded-windows",
-            "--disable-renderer-backgrounding",
-            "--disable-extensions",
-            "--disable-plugins",
-            "--disable-default-apps",
-            "--disable-sync",
-            "--disable-translate",
-            "--hide-scrollbars",
-            "--mute-audio",
-            "--no-default-browser-check",
-            "--no-pings",
-            "--password-store=basic",
-            "--use-mock-keychain"
-        ],
-        timeout: 60000,
-        protocolTimeout: 60000
+            "--single-process"
+        ]
     });
 }
 
