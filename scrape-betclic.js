@@ -1,4 +1,4 @@
-import puppeteer from "puppeteer-core";
+import puppeteer from "puppeteer";
 import TelegramBot from "node-telegram-bot-api";
 import cron from "node-cron";
 import fs from "fs";
@@ -38,10 +38,9 @@ function saveState(state) {
 }
 
 async function launchBrowser() {
-    // Configuration pour Railway avec Chromium système
+    // Configuration pour Railway
     return puppeteer.launch({
-        executablePath: '/usr/bin/chromium',
-        headless: true,
+        headless: "new",
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
