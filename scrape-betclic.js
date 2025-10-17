@@ -38,18 +38,49 @@ function saveState(state) {
 }
 
 async function launchBrowser() {
-    // Configuration pour Alpine Linux avec Chromium
-    return puppeteer.launch({
-        headless: "new",
-        executablePath: '/usr/bin/chromium-browser',
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--single-process"
-        ]
-    });
+    // Configuration avec fallback pour Railway
+    const configs = [
+        // Config 1: Ultra-simple
+        {
+            headless: "new",
+            args: ["--no-sandbox", "--disable-setuid-sandbox"]
+        },
+        // Config 2: Avec plus d'options
+        {
+            headless: "new",
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
+        },
+        // Config 3: Avec executablePath
+        {
+            headless: "new",
+            executablePath: '/usr/bin/chromium-browser',
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
+        }
+    ];
+    
+    for (let i = 0; i < configs.length; i++) {
+        try {
+            console.log(`🔧 Tentative configuration ${i + 1}/${configs.length}`);
+            const browser = await puppeteer.launch(configs[i]);
+            console.log(`✅ Configuration ${i + 1} réussie`);
+            return browser;
+        } catch (error) {
+            console.log(`❌ Configuration ${i + 1} échouée:`, error.message);
+            if (i === configs.length - 1) {
+                throw error;
+            }
+        }
+    }
 }
 
 async function scrapeMatches(page) {
@@ -191,14 +222,47 @@ async function scrapeMatches(page) {
 async function mainRun() {
     console.log(`=== Betclic Run start: ${new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })} ===`);
     let browser;
-    try {
-        console.log("🚀 Lancement navigateur Betclic...");
-        browser = await launchBrowser();
-        
-        // Vérifier que le navigateur est bien lancé
-        if (!browser || browser.isConnected() === false) {
-            throw new Error("Navigateur non connecté");
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+        try {
+            console.log(`🚀 Lancement navigateur Betclic... (tentative ${retryCount + 1}/${maxRetries})`);
+            browser = await launchBrowser();
+            
+            // Attendre un peu pour que le navigateur se stabilise
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Vérifier que le navigateur est bien lancé
+            if (!browser || browser.isConnected() === false) {
+                throw new Error("Navigateur non connecté");
+            }
+            
+            console.log("✅ Navigateur lancé avec succès");
+            break;
+            
+        } catch (error) {
+            console.error(`❌ Erreur tentative ${retryCount + 1}:`, error.message);
+            retryCount++;
+            
+            if (browser) {
+                try {
+                    await browser.close();
+                } catch (e) {
+                    // Ignorer les erreurs de fermeture
+                }
+            }
+            
+            if (retryCount < maxRetries) {
+                console.log(`⏳ Attente de 5 secondes avant la prochaine tentative...`);
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            } else {
+                throw error;
+            }
         }
+    }
+    
+    try {
         
         const page = await browser.newPage();
         
