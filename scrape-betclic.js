@@ -38,10 +38,10 @@ function saveState(state) {
 }
 
 async function launchBrowser() {
-    // Configuration pour l'image Puppeteer officielle
+    // Configuration pour Alpine Linux avec Chromium
     return puppeteer.launch({
         headless: "new",
-        executablePath: '/usr/bin/google-chrome-stable',
+        executablePath: '/usr/bin/chromium-browser',
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
