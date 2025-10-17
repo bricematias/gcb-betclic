@@ -1,4 +1,5 @@
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import TelegramBot from "node-telegram-bot-api";
 import cron from "node-cron";
 import fs from "fs";
@@ -38,18 +39,12 @@ function saveState(state) {
 }
 
 async function launchBrowser() {
+    // Configuration pour Railway avec @sparticuz/chromium (optimisé)
     return puppeteer.launch({
-        headless: "new",
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-accelerated-2d-canvas",
-            "--no-first-run",
-            "--no-zygote",
-            "--single-process",
-            "--disable-gpu",
-        ],
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
     });
 }
 
