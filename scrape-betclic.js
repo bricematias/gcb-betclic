@@ -38,9 +38,10 @@ function saveState(state) {
 }
 
 async function launchBrowser() {
-    // Configuration pour Railway
+    // Configuration pour Railway (Docker avec Puppeteer image)
     return puppeteer.launch({
         headless: "new",
+        executablePath: '/usr/bin/google-chrome-stable',
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",

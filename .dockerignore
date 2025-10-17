@@ -6,4 +6,6 @@ README.md
 .env
 *.md
 .DS_Store
+Dockerfile
+.dockerignore
 
