@@ -122,19 +122,32 @@ async function scrapeMatches(page) {
     // Continue même si aucun sélecteur n'est trouvé
 
     const matches = await page.evaluate(() => {
+        console.log("🔍 Recherche des matchs Betclic...");
+        
         // Essayer plusieurs sélecteurs possibles
-        let cards = Array.from(document.querySelectorAll('.groupEvents_card'));
+        let cards = Array.from(document.querySelectorAll('sports-events-event-card'));
+        console.log(`📊 Cards trouvées avec 'sports-events-event-card': ${cards.length}`);
+        
         if (cards.length === 0) {
-            cards = Array.from(document.querySelectorAll('sports-events-event-card'));
+            cards = Array.from(document.querySelectorAll('.groupEvents_card'));
+            console.log(`📊 Cards trouvées avec '.groupEvents_card': ${cards.length}`);
         }
+        
         if (cards.length === 0) {
             cards = Array.from(document.querySelectorAll('.cardEvent'));
+            console.log(`📊 Cards trouvées avec '.cardEvent': ${cards.length}`);
         }
-        // Logs supprimés pour Railway
+        
+        console.log(`🎯 Total cards trouvées: ${cards.length}`);
+        
         return cards.map((card, index) => {
+            console.log(`🔍 Traitement card ${index + 1}`);
+            
             // Récupérer les équipes
             const contestant1 = card.querySelector('[data-qa="contestant-1-label"]')?.textContent?.trim();
             const contestant2 = card.querySelector('[data-qa="contestant-2-label"]')?.textContent?.trim();
+            
+            console.log(`👥 Équipes: ${contestant1} vs ${contestant2}`);
             
             // Vérifier si on a de vrais noms d'équipes (pas des noms génériques)
             const hasRealTeams = contestant1 && contestant2 && 
@@ -175,27 +188,13 @@ async function scrapeMatches(page) {
                 if (match) betCount = parseInt(match[1], 10);
             }
             
-            // Récupérer les cotes 1N2
-            const odds = [];
-            const oddButtons = card.querySelectorAll('.btn.is-odd');
-            oddButtons.forEach(btn => {
-                const labelEl = btn.querySelector('.btn_label.is-top');
-                const valueEl = btn.querySelector('.btn_label:not(.is-top)');
-                if (labelEl && valueEl) {
-                    const label = labelEl.textContent.trim();
-                    const value = valueEl.textContent.trim();
-                    if (label && value) {
-                        odds.push({ label, cote: value });
-                    }
-                }
-            });
+            console.log(`📊 Match: ${matchName} | Compétition: ${competition} | Heure: ${time} | Paris: ${betCount}`);
             
             return {
                 matchName,
                 competition,
                 time,
                 betCount,
-                odds,
                 index
             };
         }).filter(match => 
